@@ -7,8 +7,8 @@ def execute():
     args = get_arguments()
     welcome(args.origin, args.target)
     if args.action == "copy":
-        for name in get_all_configs(args.origin, args.user_origin, args.password_origin).items():
-            create_job(args.origin, name + "borrar", configs[name], args.user_target, args.password_target)
+        for name, config in get_all_configs(args.origin, args.user_origin, args.password_origin).items():
+                create_job(args.origin, name, config, args.user_target, args.password_target)
     
     elif args.action == "save":
         create_folder(args.folder)
@@ -17,8 +17,8 @@ def execute():
     
     elif args.action == "restore":
         for name, config in load_all_configs(args.folder).items():
-            create_job(args.origin, name + "borrar", configs[name], args.user_target, args.password_target)
-            
+            create_job(args.origin, name, config, args.user_target, args.password_target)
+
     else:
         print("Wrong arguments !!!")
 
