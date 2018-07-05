@@ -7,8 +7,9 @@ def execute():
     args = get_arguments()
     welcome(args.origin, args.target)
     if args.action == "copy":
+        crumb = get_crumb(args.user_target, args.password_target, args.target)
         for name, config in get_all_configs(args.origin, args.user_origin, args.password_origin).items():
-                create_job(args.origin, name, config, args.user_target, args.password_target)
+            read_response(create_job(args.target, name, config, args.user_target, args.password_target, crumb))
     
     elif args.action == "save":
         create_folder(args.folder)
@@ -16,11 +17,23 @@ def execute():
             create_config_file(args.folder, name, config)
     
     elif args.action == "restore":
+        crumb = get_crumb(args.user_target, args.password_target, args.target)
         for name, config in load_all_configs(args.folder).items():
-            create_job(args.origin, name, config, args.user_target, args.password_target)
+            read_response(create_job(args.target, name, config, args.user_target, args.password_target, crumb))
+
+    elif args.action == "clean":
+        crumb = get_crumb(args.user_target, args.password_target, args.target)
+        for name in get_all_configs(args.target, args.user_target, args.password_target):
+            read_response(delete_job(args.target, name, args.user_target, args.password_target, crumb))
 
     else:
         print("Wrong arguments !!!")
+
+def read_response(response):
+    if response.status_code == 200:
+        print("\t\tDone !")
+    else:
+        print("\tResponse: {}".format(response.text))
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -52,13 +65,14 @@ def get_configs(origin, jobs, user, password):
     return {job["name"]: get_config(job["name"], job["url"], user, password) for job in jobs}
 
 def get_config(name, url, user, password):
-    print("   - Configuration of {}".format(name))
+    print("\t- Configuration of {}".format(name))
     return requests.get("{}/config.xml".format(url), auth=(user, password)).text
 
-def create_job(origin, name, config, user, password):
-    print("   - Creating {} job in {}".format(name, origin))
-    headers = {'Content-Type': 'application/xml'}
-    return requests.post("http://{}/createItem?name={}".format(origin, name), data=config, auth=(user, password), headers=headers)
+def create_job(server, name, config, user, password, crumb):
+    print("\t- Creating {} job in {}".format(name, server))
+    [crumb_key, crumb_value] = crumb
+    headers = {'Content-Type': 'application/xml', crumb_key: crumb_value}
+    return requests.post("http://{}/createItem?name={}".format(server, name), data=config, auth=(user, password), headers=headers)
 
 def create_folder(folder):
     if not os.path.exists(folder) or not os.path.isdir:
@@ -75,6 +89,21 @@ def load_all_configs(folder):
         with open(os.path.join(folder, config_file), "r") as f:
             configs[name] = f.read()
     return configs
+
+def get_crumb(user, password, server):
+    url = 'http://{}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)'.format(server)
+    response = requests.get(url, auth=(user, password))
+    if response.status_code == 200:
+        return response.text.split(":")
+    else:
+        raise Exception(response.text)
+
+def delete_job(server, name, user, password, crumb):
+    print("\t- Deleting {} job in {}".format(name, server))
+    [crumb_key, crumb_value] = crumb
+    headers = {crumb_key: crumb_value}
+    return requests.post("http://{}/job/{}/doDelete".format(server, name), data="", auth=(user, password), headers=headers)
+
 
 if __name__ == "__main__":
     execute()
