@@ -3,9 +3,7 @@ import os
 import requests
 import os
 
-def execute():
-    args = get_arguments()
-    welcome(args.origin, args.target)
+def execute(args):
     if args.action == "copy":
         crumb = get_crumb(args.user_target, args.password_target, args.target)
         for name, config in get_all_configs(args.origin, args.user_origin, args.password_origin).items():
@@ -106,4 +104,6 @@ def delete_job(server, name, user, password, crumb):
 
 
 if __name__ == "__main__":
-    execute()
+    args = get_arguments()
+    welcome(args.origin, args.target)
+    execute(args)
